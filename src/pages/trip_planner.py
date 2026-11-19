@@ -1,8 +1,13 @@
+# all dem imports
+
 import folium
 from streamlit_folium import st_folium
 
 import streamlit as st
 from geopy.geocoders import Nominatim
+
+import requests
+
 
 # Page title
 st.title("Trip Planner")
@@ -25,6 +30,9 @@ if "destination_coords" not in st.session_state:
 if "route_data" not in st.session_state:
     st.session_state.route_data = None
 
+
+# functions
+
 @st.cache_data
 def get_coordinates(place):
     print(f"Calling geocoder for {place}")
@@ -44,6 +52,34 @@ def get_coordinates(place):
         return (location.latitude, location.longitude)
 
     return None
+
+@st.cache_data
+def get_route(origin_coords, destination_coords):
+    """
+    Ask OSRM for a road route between two locations.
+
+    Returns the JSON response from OSRM.
+
+    Cached so the same route isn't repeatedly requested.
+    """
+
+    print("Requesting route from OSRM")
+
+    start_lon = origin_coords[1]
+    start_lat = origin_coords[0]
+
+    end_lon = destination_coords[1]
+    end_lat = destination_coords[0]
+
+    url = (
+        f"https://router.project-osrm.org/route/v1/driving/"
+        f"{start_lon},{start_lat};{end_lon},{end_lat}"
+        f"?overview=full&geometries=geojson"
+    )
+
+    response = requests.get(url)
+
+    return response.json()
 
 # Create the session variable the first time the page loads
 if "show_map" not in st.session_state:
@@ -114,12 +150,5 @@ if st.session_state.show_map:
         )
 
 
-@st.cache_data
-def get_route(origin_coords, destination_coords):
-    """
-    Ask OSRM for a road route between two locations.
 
-    Returns route geometry and navigation data.
-    """
 
-    pass
