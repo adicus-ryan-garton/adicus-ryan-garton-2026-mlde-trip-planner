@@ -2,12 +2,9 @@
 
 import folium
 from streamlit_folium import st_folium
-
 import streamlit as st
 from geopy.geocoders import Nominatim
-
 import requests
-
 import math
 
 
@@ -90,7 +87,9 @@ def get_route(origin_coords, destination_coords):
     url = (
         f"https://router.project-osrm.org/route/v1/driving/"
         f"{start_lon},{start_lat};{end_lon},{end_lat}"
-        f"?overview=full&geometries=geojson"
+        f"?overview=full"
+        f"&geometries=geojson"
+        f"&steps=true"
     )
 
     response = requests.get(url)
@@ -128,6 +127,8 @@ if st.session_state.show_map:
     elif destination_coords is None:
         st.error(f"Could not find '{destination}'")
 
+
+    # Route display section
     else:
 
         # Request a road route from OSRM
@@ -143,6 +144,7 @@ if st.session_state.show_map:
 
         # Extract the first route returned by OSRM
         route = route_data["routes"][0]
+        st.write(route["legs"][0]["steps"][0])
 
         # Route statistics
         distance_km = route["distance"] / 1000

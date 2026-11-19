@@ -25,5 +25,26 @@ else:
         st.write(
             f"Driving time: {leg['duration_hours']:.1f} hours"
         )
+        st.write("Directions:")
 
+        steps = (
+            leg["route_data"]
+            ["routes"][0]
+            ["legs"][0]
+            ["steps"]
+        )
+
+        for step in steps:
+            maneuver_type = step["maneuver"]["type"]
+
+            road_name = step["name"]
+
+            distance_km = step["distance"] / 1000
+
+            st.write(
+                f"• {maneuver_type} on "
+                f"{road_name} "
+                f"({distance_km:.1f} km)"
+            )
         st.divider()
+
