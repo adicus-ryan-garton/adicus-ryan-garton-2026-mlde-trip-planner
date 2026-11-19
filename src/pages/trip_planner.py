@@ -46,12 +46,10 @@ if "break_interval" not in st.session_state:
 
 # functions
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_coordinates(place):
+    # convert a place name into latitude/longitude coordinates.
     print(f"Calling geocoder for {place}")
-    """
-    Convert a place name into latitude/longitude coordinates.
-    """
 
     # timeout=10 gives the server more time to respond
     geolocator = Nominatim(
@@ -67,7 +65,7 @@ def get_coordinates(place):
     return None
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_place_name(coords):
     """
     Convert coordinates into a human-readable place name.
@@ -92,7 +90,7 @@ def get_place_name(coords):
     )
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_route(origin_coords, destination_coords):
     """
     Ask OSRM for a road route between two locations.
@@ -166,16 +164,13 @@ if st.session_state.show_map:
         # Store route data so other pages can use it
         st.session_state.route_data = route_data
 
-        st.write("OSRM status:", route_data["code"])
+        if route_data["code"] != "Ok":
+            st.error("Unable to calculate route.")
 
         # Extract the first route returned by OSRM
         route = route_data["routes"][0]
 
         steps = route["legs"][0]["steps"]
-
-        st.write(
-            f"Route contains {len(steps)} navigation steps"
-        )
 
         # Route statistics
         distance_km = route["distance"] / 1000
@@ -268,11 +263,6 @@ if st.session_state.show_map:
 
             elapsed_time = step_end_time
 
-        # debug check
-        st.write(
-            f"Calculated {len(break_markers)} break points"
-        )
-
         # Build a complete list of stopping points
         stopping_points = [
             origin_coords,
@@ -304,22 +294,10 @@ if st.session_state.show_map:
         # Save legs for use on other pages
         st.session_state.trip_legs = trip_legs
 
-        # verify trip legs
-        st.write("Trip legs")
-        for leg in trip_legs:
-            st.write(
-                f"Leg {leg['leg_number']}: "
-                f"{leg['start']} -> {leg['end']}"
-            )
-
-        # For debugging
-        st.write(f"Route contains {len(geometry['coordinates'])} points")
-
-        # Display the top-level keys returned by OSRM
-        st.write(route_data.keys())
 
         # Display the response status for testing
-        st.write("OSRM status:", route_data["code"])
+        if route_data["code"] != "Ok":
+            st.error("Unable to calculate route.")
 
 
         # Create map

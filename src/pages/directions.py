@@ -42,7 +42,26 @@ else:
             weight=5
         ).add_to(leg_map)
 
-        leg_map.fit_bounds(road_coordinates)
+        # Start marker
+
+        folium.Marker(
+            location=road_coordinates[0],
+            popup="Start",
+            icon=folium.Icon(color="orange")
+        ).add_to(leg_map)
+
+        # End marker
+
+        folium.Marker(
+            location=road_coordinates[-1],
+            popup="End",
+            icon=folium.Icon(color="orange")
+        ).add_to(leg_map)
+
+        leg_map.fit_bounds(
+            road_coordinates,
+            padding=(30, 30)
+        )
 
         st_folium(
             leg_map,
