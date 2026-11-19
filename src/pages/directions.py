@@ -4,6 +4,8 @@
 # the leg itself.
 
 import streamlit as st
+import folium
+from streamlit_folium import st_folium
 
 st.title("Directions")
 
@@ -13,9 +15,40 @@ if "trip_legs" not in st.session_state or not st.session_state.trip_legs:
 
 else:
     st.write(f"{len(st.session_state.trip_legs)} driving legs found.")
+    total_time = 0
     for leg in st.session_state.trip_legs:
-        st.subheader(
-            f"Leg {leg['leg_number']}"
+        st.subheader(f"Leg {leg['leg_number']}")
+        st.caption(f"{leg['start_name']} → {leg['end_name']}")
+
+
+        # Extract route geometry for this leg
+        route = leg["route_data"]["routes"][0]
+        geometry = route["geometry"]
+
+        road_coordinates = []
+
+        for point in geometry["coordinates"]:
+            longitude = point[0]
+            latitude = point[1]
+            road_coordinates.append(
+                [latitude, longitude]
+            )
+
+        leg_map = folium.Map()
+
+        folium.PolyLine(
+            locations=road_coordinates,
+            color="blue",
+            weight=5
+        ).add_to(leg_map)
+
+        leg_map.fit_bounds(road_coordinates)
+
+        st_folium(
+            leg_map,
+            width=700,
+            height=300,
+            key=f"leg_map_{leg['leg_number']}"
         )
 
         st.write(
@@ -25,6 +58,7 @@ else:
         st.write(
             f"Driving time: {leg['duration_hours']:.1f} hours"
         )
+        total_time += leg["duration_hours"]
         st.write("Directions:")
 
         steps = (
@@ -48,3 +82,6 @@ else:
             )
         st.divider()
 
+st.write(
+    f"Total of all legs: {total_time:.1f} hours"
+)

@@ -66,6 +66,32 @@ def get_coordinates(place):
 
     return None
 
+
+@st.cache_data
+def get_place_name(coords):
+    """
+    Convert coordinates into a human-readable place name.
+    """
+    geolocator = Nominatim(
+        user_agent="trip_planner",
+        timeout=10
+    )
+    location = geolocator.reverse(
+        f"{coords[0]}, {coords[1]}",
+        language="en"
+    )
+    if not location:
+        return "Unknown location"
+    address = location.raw.get("address", {})
+    return (
+        address.get("city")
+        or address.get("town")
+        or address.get("village")
+        or address.get("municipality")
+        or "Unknown location"
+    )
+
+
 @st.cache_data
 def get_route(origin_coords, destination_coords):
     """
@@ -144,7 +170,12 @@ if st.session_state.show_map:
 
         # Extract the first route returned by OSRM
         route = route_data["routes"][0]
-        st.write(route["legs"][0]["steps"][0])
+
+        steps = route["legs"][0]["steps"]
+
+        st.write(
+            f"Route contains {len(steps)} navigation steps"
+        )
 
         # Route statistics
         distance_km = route["distance"] / 1000
@@ -177,22 +208,70 @@ if st.session_state.show_map:
                 [latitude, longitude]
             )
 
-        # Calculate where breaks should occur along the route
+        # Calculate break points using actual OSRM step durations
         break_markers = []
 
         # Store information about each leg
         trip_legs = []
+        steps = route["legs"][0]["steps"]
 
-        for leg_number in range(1, estimated_legs):
-            # Calculate the percentage of the route completed
-            route_fraction = leg_number / estimated_legs
-            # Find the matching coordinate in the route
-            coordinate_index = int(
-                route_fraction * len(road_coordinates)
+        break_interval_seconds = (
+                st.session_state.break_interval * 3600
+        )
+
+        next_break_time = break_interval_seconds
+
+        elapsed_time = 0
+
+        for step in steps:
+
+            step_start_time = elapsed_time
+
+            step_end_time = (
+                    elapsed_time + step["duration"]
             )
-            break_markers.append(
-                road_coordinates[coordinate_index]
-            )
+
+            while step_end_time >= next_break_time:
+                # How far through this step
+                # the breakpoint occurs
+                fraction = (
+                        (next_break_time - step_start_time)
+                        /
+                        step["duration"]
+                )
+
+                geometry_points = (
+                    step["geometry"]["coordinates"]
+                )
+
+                point_index = int(
+                    fraction *
+                    (len(geometry_points) - 1)
+                )
+
+                point = geometry_points[
+                    point_index
+                ]
+
+                # Convert from
+                # [longitude, latitude]
+                # to
+                # [latitude, longitude]
+                break_markers.append([
+                    point[1],
+                    point[0]
+                ])
+
+                next_break_time += (
+                    break_interval_seconds
+                )
+
+            elapsed_time = step_end_time
+
+        # debug check
+        st.write(
+            f"Calculated {len(break_markers)} break points"
+        )
 
         # Build a complete list of stopping points
         stopping_points = [
@@ -208,11 +287,14 @@ if st.session_state.show_map:
             leg_route = get_route(leg_start,leg_end)
 
             route = leg_route["routes"][0]
-
+            start_name = get_place_name(leg_start)
+            end_name = get_place_name(leg_end)
             trip_legs.append({
                 "leg_number": index + 1,
                 "start": leg_start,
                 "end": leg_end,
+                "start_name": start_name,
+                "end_name": end_name,
                 "break_interval": st.session_state.break_interval,
                 "distance_km": route["distance"] / 1000,
                 "duration_hours": route["duration"] / 3600,
