@@ -1,5 +1,11 @@
-# all dem imports
+# This is the trip planner page. This will take your starting and ending locations and produce
+# the overall trip details for you. The DIRECTIONS page will take information from this page and
+# generate the directions for teh user.
 
+# Developer settings
+DEBUG_MODE = True
+
+# all dem imports
 import folium
 from streamlit_folium import st_folium
 import streamlit as st

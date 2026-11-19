@@ -1,4 +1,4 @@
-# Trip Planner
+# Trip Planner (to be updated, when the app expands beyond simple trip planning)
 # created by Adicus Ryan Garton
 # for MLDE Fall 2026 project (Intro to Programming, Software Development Tools)
 
@@ -6,6 +6,9 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
+
+# Developer settings
+DEBUG_MODE = True
 
 import streamlit as st
 
