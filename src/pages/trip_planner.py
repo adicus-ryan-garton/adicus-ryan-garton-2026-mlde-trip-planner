@@ -109,6 +109,41 @@ if st.session_state.show_map:
 
     else:
 
+        # Request a road route from OSRM
+        route_data = get_route(
+            origin_coords,
+            destination_coords
+        )
+
+        # Extract the first route returned by OSRM
+        route = route_data["routes"][0]
+
+        # Extract the route geometry
+        geometry = route["geometry"]
+
+        # OSRM returns [longitude, latitude]
+        # Folium expects [latitude, longitude]
+
+        road_coordinates = []
+
+        for point in geometry["coordinates"]:
+            longitude = point[0]
+            latitude = point[1]
+
+            road_coordinates.append(
+                [latitude, longitude]
+            )
+
+        # For debugging
+        st.write(f"Route contains {len(geometry['coordinates'])} points")
+
+        # Display the top-level keys returned by OSRM
+        st.write(route_data.keys())
+
+        # Display the response status for testing
+        st.write("OSRM status:", route_data["code"])
+
+
         # Create map
         m = folium.Map()
 
@@ -130,7 +165,7 @@ if st.session_state.show_map:
 
         # Draw route line
         folium.PolyLine(
-            locations=[origin_coords, destination_coords],
+            locations=road_coordinates,
             color="blue",
             weight=5,
             opacity=0.8
