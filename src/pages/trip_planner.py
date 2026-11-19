@@ -174,6 +174,10 @@ if st.session_state.show_map:
 
         # Calculate where breaks should occur along the route
         break_markers = []
+
+        # Store information about each leg
+        trip_legs = []
+
         for leg_number in range(1, estimated_legs):
             # Calculate the percentage of the route completed
             route_fraction = leg_number / estimated_legs
@@ -183,6 +187,29 @@ if st.session_state.show_map:
             )
             break_markers.append(
                 road_coordinates[coordinate_index]
+            )
+
+        # Build a complete list of stopping points
+        stopping_points = [
+            origin_coords,
+            *break_markers,
+            destination_coords
+        ]
+
+        # Create individual legs between stopping points
+        for index in range(len(stopping_points) - 1):
+            trip_legs.append({
+                "leg_number": index + 1,
+                "start": stopping_points[index],
+                "end": stopping_points[index + 1]
+            })
+
+        # verify trip legs
+        st.write("Trip legs")
+        for leg in trip_legs:
+            st.write(
+                f"Leg {leg['leg_number']}: "
+                f"{leg['start']} -> {leg['end']}"
             )
 
         # For debugging
