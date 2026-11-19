@@ -10,6 +10,23 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
+# let's make the instructions human-readable directions instead
+MANEUVER_TEXT = {
+    "depart": "Start on",
+    "turn": "Turn onto",
+    "continue": "Continue on",
+    "new name": "Continue onto",
+    "roundabout": "Enter roundabout via",
+    "merge": "Merge onto",
+    "fork": "Take fork onto",
+    "arrive": "Arrive at",
+    "end of road": "At end of road, continue onto",
+    "notification": "Continue on",
+    "off ramp": "Take exit onto",
+    "on ramp": "Join",
+    "exit roundabout": "Exit roundabout onto"
+}
+
 st.title("Directions")
 
 # Check whether a route has been calculated
@@ -22,6 +39,9 @@ else:
     try:
         for leg in st.session_state.trip_legs:
             st.subheader(f"Leg {leg['leg_number']}")
+            st.write(
+                f"DEBUG: {leg['end_name']}"
+            )
             st.caption(f"{leg['start_name']} → {leg['end_name']}")
 
 
@@ -98,11 +118,31 @@ else:
 
                 distance_km = step["distance"] / 1000
 
-                st.write(
-                    f"• {maneuver_type} on "
-                    f"{road_name} "
-                    f"({distance_km:.1f} km)"
+                # Ignore tiny instructions.
+                # These are usually lane adjustments, parking-lot
+                # movements, or other noise that isn't useful for
+                # trip planning.
+
+                if distance_km < 0.5:
+                    continue
+
+                instruction = MANEUVER_TEXT.get(
+                    maneuver_type,
+                    maneuver_type.replace("_", " ").title()
                 )
+
+                if road_name:
+                    text = (
+                        f"• {instruction} {road_name} "
+                        f"({distance_km:.1f} km)"
+                    )
+                else:
+                    text = (
+                        f"• {instruction} "
+                        f"({distance_km:.1f} km)"
+                    )
+
+                st.write(text)
             st.divider()
 
     except Exception as error:

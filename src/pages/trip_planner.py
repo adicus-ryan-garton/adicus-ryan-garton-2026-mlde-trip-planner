@@ -5,7 +5,7 @@
 # Developer settings
 DEBUG_MODE = True
 
-# all dem imports
+# más importante
 import folium
 from streamlit_folium import st_folium
 import streamlit as st
@@ -29,6 +29,14 @@ break_interval = st.number_input(
     value=2
 )
 
+# Maximum cruising speed of the vehicle
+vehicle_speed = st.number_input(
+    "Planned cruising speed (km/h)",
+    min_value=30,
+    max_value=140,
+    value=120
+)
+
 # Create session variables the first time the app loads
 
 if "show_map" not in st.session_state:
@@ -48,6 +56,9 @@ if "trip_legs" not in st.session_state:
 
 if "break_interval" not in st.session_state:
     st.session_state.break_interval = 2
+
+if "vehicle_speed" not in st.session_state:
+    st.session_state.vehicle_speed = 120
 
 
 # functions
@@ -97,6 +108,35 @@ def get_place_name(coords):
 
 
 @st.cache_data(show_spinner=False)
+def get_nearby_fuel_stations(coords):
+    """
+    Find fuel stations near a breakpoint.
+    """
+
+    latitude = coords[0]
+    longitude = coords[1]
+
+    overpass_query = f"""
+    [out:json];
+    (
+      node
+        [amenity=fuel]
+        (around:5000,{latitude},{longitude});
+    );
+    out;
+    """
+
+    response = requests.get(
+        "https://overpass-api.de/api/interpreter",
+        params={"data": overpass_query},
+        timeout=20
+    )
+
+    data = response.json()
+
+    return data["elements"]
+
+@st.cache_data(show_spinner=False)
 def get_route(origin_coords, destination_coords):
     """
     Ask OSRM for a road route between two locations.
@@ -136,6 +176,7 @@ if st.button("Show Route"):
 
     st.session_state.origin_coords = get_coordinates(origin)
     st.session_state.break_interval = break_interval
+    st.session_state.vehicle_speed = vehicle_speed
     st.session_state.destination_coords = get_coordinates(destination)
 
     # Clear any previous route data.
@@ -180,7 +221,11 @@ if st.session_state.show_map:
 
         # Route statistics
         distance_km = route["distance"] / 1000
-        duration_hours = route["duration"] / 3600
+        duration_hours = (
+                distance_km
+                /
+                st.session_state.vehicle_speed
+        )
         estimated_legs = math.ceil(
             duration_hours / st.session_state.break_interval
         )
@@ -209,7 +254,7 @@ if st.session_state.show_map:
                 [latitude, longitude]
             )
 
-        # Calculate break points using actual OSRM step durations
+        # Calculate break points
         break_markers = []
 
         # Store information about each leg
@@ -228,9 +273,26 @@ if st.session_state.show_map:
 
             step_start_time = elapsed_time
 
-            step_end_time = (
-                    elapsed_time + step["duration"]
+            step_distance_km = (
+                    step["distance"] / 1000
             )
+
+            step_duration_seconds = (
+                                            step_distance_km
+                                            /
+                                            st.session_state.vehicle_speed
+                                    ) * 3600
+
+            step_end_time = (
+                    elapsed_time + step_duration_seconds
+            )
+
+            if DEBUG_MODE:
+                st.write(
+                    f"elapsed={elapsed_time:.0f}, "
+                    f"next_break={next_break_time:.0f}, "
+                    f"step_end={step_end_time:.0f}"
+                )
 
             while step_end_time >= next_break_time:
                 # How far through this step
@@ -269,6 +331,17 @@ if st.session_state.show_map:
 
             elapsed_time = step_end_time
 
+        # Break markers have now been created
+
+        st.write(f"Break markers: {len(break_markers)}")
+
+        if break_markers:
+            stations = get_nearby_fuel_stations(
+                break_markers[0]
+            )
+
+            st.write(stations[:3])
+
         # Build a complete list of stopping points
         stopping_points = [
             origin_coords,
@@ -293,17 +366,18 @@ if st.session_state.show_map:
                 "end_name": end_name,
                 "break_interval": st.session_state.break_interval,
                 "distance_km": route["distance"] / 1000,
-                "duration_hours": route["duration"] / 3600,
+                "duration_hours":
+(
+    route["distance"] / 1000
+)
+/
+st.session_state.vehicle_speed,
+
                 "route_data": leg_route
             })
 
         # Save legs for use on other pages
         st.session_state.trip_legs = trip_legs
-
-
-        # Display the response status for testing
-        if route_data["code"] != "Ok":
-            st.error("Unable to calculate route.")
 
 
         # Create map
