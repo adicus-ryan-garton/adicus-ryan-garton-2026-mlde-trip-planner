@@ -133,6 +133,9 @@ if st.session_state.show_map:
             destination_coords
         )
 
+        # Store route data so other pages can use it
+        st.session_state.route_data = route_data
+
         st.write("OSRM status:", route_data["code"])
 
         # Extract the first route returned by OSRM
@@ -169,6 +172,19 @@ if st.session_state.show_map:
                 [latitude, longitude]
             )
 
+        # Calculate where breaks should occur along the route
+        break_markers = []
+        for leg_number in range(1, estimated_legs):
+            # Calculate the percentage of the route completed
+            route_fraction = leg_number / estimated_legs
+            # Find the matching coordinate in the route
+            coordinate_index = int(
+                route_fraction * len(road_coordinates)
+            )
+            break_markers.append(
+                road_coordinates[coordinate_index]
+            )
+
         # For debugging
         st.write(f"Route contains {len(geometry['coordinates'])} points")
 
@@ -197,6 +213,19 @@ if st.session_state.show_map:
             tooltip="Destination",
             icon=folium.Icon(color="red")
         ).add_to(m)
+
+        # Add break markers
+        for index, break_point in enumerate(
+            break_markers,
+            start=1
+        ):
+
+            folium.Marker(
+                location=break_point,
+                popup=f"Break {index}",
+                tooltip=f"Break {index}",
+                icon=folium.Icon(color="orange")
+            ).add_to(m)
 
         # Draw route line
         folium.PolyLine(
