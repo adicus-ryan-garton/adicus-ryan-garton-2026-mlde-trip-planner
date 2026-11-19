@@ -8,6 +8,8 @@ from geopy.geocoders import Nominatim
 
 import requests
 
+import math
+
 
 # Page title
 st.title("Trip Planner")
@@ -15,6 +17,14 @@ st.title("Trip Planner")
 # Ask the user for a starting point and destination
 origin = st.text_input("Starting location")
 destination = st.text_input("Destination")
+
+# How long the user wants to drive between breaks
+break_interval = st.number_input(
+    "Driving time between breaks (hours)",
+    min_value=1,
+    max_value=8,
+    value=2
+)
 
 # Create session variables the first time the app loads
 
@@ -29,6 +39,9 @@ if "destination_coords" not in st.session_state:
 
 if "route_data" not in st.session_state:
     st.session_state.route_data = None
+
+if "break_interval" not in st.session_state:
+    st.session_state.break_interval = 2
 
 
 # functions
@@ -90,7 +103,12 @@ if "show_map" not in st.session_state:
 if st.button("Show Route"):
 
     st.session_state.origin_coords = get_coordinates(origin)
+    st.session_state.break_interval = break_interval
     st.session_state.destination_coords = get_coordinates(destination)
+
+    # Clear any previous route data.
+    # We'll recalculate it when the map is displayed.
+    st.session_state.route_data = None
 
     st.session_state.show_map = True
 
@@ -115,8 +133,25 @@ if st.session_state.show_map:
             destination_coords
         )
 
+        st.write("OSRM status:", route_data["code"])
+
         # Extract the first route returned by OSRM
         route = route_data["routes"][0]
+
+        # Route statistics
+        distance_km = route["distance"] / 1000
+        duration_hours = route["duration"] / 3600
+        estimated_legs = math.ceil(
+            duration_hours / st.session_state.break_interval
+        )
+        st.write(f"Distance: {distance_km:.1f} km")
+        st.write(f"Driving time: {duration_hours:.1f} hours")
+        st.write(
+            f"Break every {st.session_state.break_interval} hour(s)"
+        )
+        st.write(
+            f"Estimated driving legs: {estimated_legs}"
+        )
 
         # Extract the route geometry
         geometry = route["geometry"]
