@@ -201,11 +201,20 @@ if st.session_state.show_map:
 
         # Create individual legs between stopping points
         for index in range(len(stopping_points) - 1):
+            leg_start = stopping_points[index]
+            leg_end = stopping_points[index + 1]
+            leg_route = get_route(leg_start,leg_end)
+
+            route = leg_route["routes"][0]
+
             trip_legs.append({
                 "leg_number": index + 1,
-                "start": stopping_points[index],
-                "end": stopping_points[index + 1],
-                "break_interval": st.session_state.break_interval
+                "start": leg_start,
+                "end": leg_end,
+                "break_interval": st.session_state.break_interval,
+                "distance_km": route["distance"] / 1000,
+                "duration_hours": route["duration"] / 3600,
+                "route_data": leg_route
             })
 
         # Save legs for use on other pages
