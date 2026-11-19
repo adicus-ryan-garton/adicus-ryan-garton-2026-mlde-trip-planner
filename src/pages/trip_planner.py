@@ -40,6 +40,9 @@ if "destination_coords" not in st.session_state:
 if "route_data" not in st.session_state:
     st.session_state.route_data = None
 
+if "trip_legs" not in st.session_state:
+    st.session_state.trip_legs = []
+
 if "break_interval" not in st.session_state:
     st.session_state.break_interval = 2
 
@@ -201,8 +204,12 @@ if st.session_state.show_map:
             trip_legs.append({
                 "leg_number": index + 1,
                 "start": stopping_points[index],
-                "end": stopping_points[index + 1]
+                "end": stopping_points[index + 1],
+                "break_interval": st.session_state.break_interval
             })
+
+        # Save legs for use on other pages
+        st.session_state.trip_legs = trip_legs
 
         # verify trip legs
         st.write("Trip legs")
