@@ -11,8 +11,23 @@ st.title("Trip Planner")
 origin = st.text_input("Starting location")
 destination = st.text_input("Destination")
 
+# Create session variables the first time the app loads
 
+if "show_map" not in st.session_state:
+    st.session_state.show_map = False
+
+if "origin_coords" not in st.session_state:
+    st.session_state.origin_coords = None
+
+if "destination_coords" not in st.session_state:
+    st.session_state.destination_coords = None
+
+if "route_data" not in st.session_state:
+    st.session_state.route_data = None
+
+@st.cache_data
 def get_coordinates(place):
+    print(f"Calling geocoder for {place}")
     """
     Convert a place name into latitude/longitude coordinates.
     """
@@ -34,16 +49,21 @@ def get_coordinates(place):
 if "show_map" not in st.session_state:
     st.session_state.show_map = False
 
-# When the button is clicked, remember that the map should be shown
+# When the user clicks the button,
+# look up and store the coordinates
 if st.button("Show Route"):
+
+    st.session_state.origin_coords = get_coordinates(origin)
+    st.session_state.destination_coords = get_coordinates(destination)
+
     st.session_state.show_map = True
 
-# Once show_map becomes True, it stays True across reruns
+
+# If a route has been requested, display the map
 if st.session_state.show_map:
 
-    # Convert place names into coordinates
-    origin_coords = get_coordinates(origin)
-    destination_coords = get_coordinates(destination)
+    origin_coords = st.session_state.origin_coords
+    destination_coords = st.session_state.destination_coords
 
     if origin_coords is None:
         st.error(f"Could not find '{origin}'")
@@ -52,17 +72,39 @@ if st.session_state.show_map:
         st.error(f"Could not find '{destination}'")
 
     else:
-        # Create a map centered on the origin
-        m = folium.Map(
-            location=origin_coords,
-            zoom_start=8
-        )
 
-        # Add origin marker
+        # Create map
+        m = folium.Map()
+
+        # Start marker
         folium.Marker(
             location=origin_coords,
-            popup=origin
+            popup=f"Start: {origin}",
+            tooltip="Start",
+            icon=folium.Icon(color="green")
         ).add_to(m)
+
+        # Destination marker
+        folium.Marker(
+            location=destination_coords,
+            popup=f"Destination: {destination}",
+            tooltip="Destination",
+            icon=folium.Icon(color="red")
+        ).add_to(m)
+
+        # Draw route line
+        folium.PolyLine(
+            locations=[origin_coords, destination_coords],
+            color="blue",
+            weight=5,
+            opacity=0.8
+        ).add_to(m)
+
+        # Zoom so both markers are visible
+        m.fit_bounds([
+            origin_coords,
+            destination_coords
+        ])
 
         # Display map
         st_folium(
@@ -70,3 +112,14 @@ if st.session_state.show_map:
             width=700,
             height=500
         )
+
+
+@st.cache_data
+def get_route(origin_coords, destination_coords):
+    """
+    Ask OSRM for a road route between two locations.
+
+    Returns route geometry and navigation data.
+    """
+
+    pass
