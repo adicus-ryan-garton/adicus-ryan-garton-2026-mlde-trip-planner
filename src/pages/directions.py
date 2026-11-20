@@ -4,7 +4,7 @@
 # the leg itself.
 
 # Developer settings
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 import streamlit as st
 import folium
@@ -35,13 +35,10 @@ if "trip_legs" not in st.session_state or not st.session_state.trip_legs:
 
 else:
     st.write(f"{len(st.session_state.trip_legs)} driving legs found.")
-    total_time = 0
+
     try:
         for leg in st.session_state.trip_legs:
             st.subheader(f"Leg {leg['leg_number']}")
-            st.write(
-                f"DEBUG: {leg['end_name']}"
-            )
             st.caption(f"{leg['start_name']} → {leg['end_name']}")
 
 
@@ -66,20 +63,22 @@ else:
                 weight=5
             ).add_to(leg_map)
 
-            # Start marker
-
             folium.Marker(
                 location=road_coordinates[0],
                 popup="Start",
-                icon=folium.Icon(color="orange")
+                icon=folium.Icon(
+                    color="green",
+                    icon="play"
+                )
             ).add_to(leg_map)
-
-            # End marker
 
             folium.Marker(
                 location=road_coordinates[-1],
                 popup="End",
-                icon=folium.Icon(color="orange")
+                icon=folium.Icon(
+                    color="red",
+                    icon="flag"
+                )
             ).add_to(leg_map)
 
             leg_map.fit_bounds(
@@ -101,7 +100,7 @@ else:
             st.write(
                 f"Driving time: {leg['duration_hours']:.1f} hours"
             )
-            total_time += leg["duration_hours"]
+
             st.write("Directions:")
 
             steps = (
@@ -144,7 +143,17 @@ else:
 
                 st.write(text)
             st.divider()
+            if leg["leg_number"] == len(st.session_state.trip_legs):
 
+                st.success(
+                    f"Final destination reached: {leg['end_name']}"
+                )
+
+            else:
+
+                st.info(
+                    f"Break stop: {leg['end_name']}"
+                )
     except Exception as error:
 
         if DEBUG_MODE:
@@ -153,6 +162,3 @@ else:
             st.error(
                 "Sorry, directions could not be displayed."
             )
-st.write(
-    f"Total of all legs: {total_time:.1f} hours"
-)

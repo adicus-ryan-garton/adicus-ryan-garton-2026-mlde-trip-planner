@@ -3,7 +3,7 @@
 # generate the directions for teh user.
 
 # Developer settings
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 # más importante
 import folium
@@ -38,7 +38,6 @@ vehicle_speed = st.number_input(
 )
 
 # Create session variables the first time the app loads
-
 if "show_map" not in st.session_state:
     st.session_state.show_map = False
 
@@ -65,20 +64,11 @@ if "vehicle_speed" not in st.session_state:
 
 @st.cache_data(show_spinner=False)
 def get_coordinates(place):
-    # convert a place name into latitude/longitude coordinates.
-    print(f"Calling geocoder for {place}")
-
     # timeout=10 gives the server more time to respond
-    geolocator = Nominatim(
-        user_agent="trip_planner",
-        timeout=10
-    )
-
+    geolocator = Nominatim(user_agent="trip_planner",timeout=10)
     location = geolocator.geocode(place)
-
     if location:
         return (location.latitude, location.longitude)
-
     return None
 
 
@@ -87,10 +77,7 @@ def get_place_name(coords):
     """
     Convert coordinates into a human-readable place name.
     """
-    geolocator = Nominatim(
-        user_agent="trip_planner",
-        timeout=10
-    )
+    geolocator = Nominatim(user_agent="trip_planner",timeout=10)
     location = geolocator.reverse(
         f"{coords[0]}, {coords[1]}",
         language="en"
@@ -108,49 +95,14 @@ def get_place_name(coords):
 
 
 @st.cache_data(show_spinner=False)
-def get_nearby_fuel_stations(coords):
-    """
-    Find fuel stations near a breakpoint.
-    """
-
-    latitude = coords[0]
-    longitude = coords[1]
-
-    overpass_query = f"""
-    [out:json];
-    (
-      node
-        [amenity=fuel]
-        (around:5000,{latitude},{longitude});
-    );
-    out;
-    """
-
-    response = requests.get(
-        "https://overpass-api.de/api/interpreter",
-        params={"data": overpass_query},
-        timeout=20
-    )
-
-    data = response.json()
-
-    return data["elements"]
-
-@st.cache_data(show_spinner=False)
 def get_route(origin_coords, destination_coords):
     """
     Ask OSRM for a road route between two locations.
-
     Returns the JSON response from OSRM.
-
     Cached so the same route isn't repeatedly requested.
     """
-
-    print("Requesting route from OSRM")
-
     start_lon = origin_coords[1]
     start_lat = origin_coords[0]
-
     end_lon = destination_coords[1]
     end_lat = destination_coords[0]
 
@@ -163,12 +115,8 @@ def get_route(origin_coords, destination_coords):
     )
 
     response = requests.get(url)
-
     return response.json()
 
-# Create the session variable the first time the page loads
-if "show_map" not in st.session_state:
-    st.session_state.show_map = False
 
 # When the user clicks the button,
 # look up and store the coordinates
@@ -182,31 +130,21 @@ if st.button("Show Route"):
     # Clear any previous route data.
     # We'll recalculate it when the map is displayed.
     st.session_state.route_data = None
-
     st.session_state.show_map = True
 
 
 # If a route has been requested, display the map
 if st.session_state.show_map:
-
     origin_coords = st.session_state.origin_coords
     destination_coords = st.session_state.destination_coords
-
     if origin_coords is None:
         st.error(f"Could not find '{origin}'")
-
     elif destination_coords is None:
         st.error(f"Could not find '{destination}'")
-
-
     # Route display section
     else:
-
         # Request a road route from OSRM
-        route_data = get_route(
-            origin_coords,
-            destination_coords
-        )
+        route_data = get_route(origin_coords,destination_coords)
 
         # Store route data so other pages can use it
         st.session_state.route_data = route_data
@@ -332,21 +270,14 @@ if st.session_state.show_map:
             elapsed_time = step_end_time
 
         # Break markers have now been created
-
         st.write(f"Break markers: {len(break_markers)}")
 
-        if break_markers:
-            stations = get_nearby_fuel_stations(
-                break_markers[0]
-            )
 
-            st.write(stations[:3])
 
-        # Build a complete list of stopping points
         stopping_points = [
-            origin_coords,
-            *break_markers,
-            destination_coords
+        origin_coords,
+        *break_markers,
+        destination_coords
         ]
 
         # Create individual legs between stopping points
@@ -388,7 +319,10 @@ st.session_state.vehicle_speed,
             location=origin_coords,
             popup=f"Start: {origin}",
             tooltip="Start",
-            icon=folium.Icon(color="green")
+            icon=folium.Icon(
+                color="green",
+                icon="play"
+            )
         ).add_to(m)
 
         # Destination marker
@@ -396,19 +330,19 @@ st.session_state.vehicle_speed,
             location=destination_coords,
             popup=f"Destination: {destination}",
             tooltip="Destination",
-            icon=folium.Icon(color="red")
+            icon=folium.Icon(
+                color="red",
+                icon="flag"
+            )
         ).add_to(m)
 
-        # Add break markers
+        # Add break markers, and place-name them
         for index, break_point in enumerate(
-            break_markers,
-            start=1
+                break_markers,
+                start=1
         ):
-
             folium.Marker(
                 location=break_point,
-                popup=f"Break {index}",
-                tooltip=f"Break {index}",
                 icon=folium.Icon(color="orange")
             ).add_to(m)
 

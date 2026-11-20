@@ -8,9 +8,16 @@ import folium
 from streamlit_folium import st_folium
 
 # Developer settings
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 import streamlit as st
 
 st.title("Trip Planner")
-st.write("Welcome!")
+
+st.write("""
+Welcome to the Trip Planner application.
+
+Use the sidebar to:
+- Plan a route
+- View detailed directions & maps
+""")
