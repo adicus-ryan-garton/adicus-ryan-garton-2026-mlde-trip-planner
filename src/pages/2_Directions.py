@@ -95,7 +95,7 @@ else:
             st.write(f"Driving time: {leg['duration_hours']:.1f} hours")
 
             # create directions and hide them under an expander
-            with st.expander("Show Directions"):
+            with st.expander("Turn-by-turn Directions"):
 
                 steps = (
                     leg["route_data"]

@@ -12,10 +12,12 @@ DEBUG_MODE = False
 
 import streamlit as st
 
-st.title("Trip Planner")
+st.image("assets/hero.jpg", use_container_width=True)
+
+st.title("Band Van Tour Planner v1.0")
 
 st.write("""
-Welcome to the Trip Planner application.
+Welcome to the Band Van Tour Planner v1.0.
 
 Use the sidebar to:
 - Plan a route
