@@ -4,7 +4,7 @@
 # the leg itself.
 
 # Developer settings
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 import streamlit as st
 import folium
@@ -81,10 +81,7 @@ else:
                 )
             ).add_to(leg_map)
 
-            leg_map.fit_bounds(
-                road_coordinates,
-                padding=(30, 30)
-            )
+            leg_map.fit_bounds(road_coordinates,padding=(30, 30))
 
             st_folium(
                 leg_map,
@@ -93,72 +90,64 @@ else:
                 key=f"leg_map_{leg['leg_number']}"
             )
 
-            st.write(
-                f"Distance: {leg['distance_km']:.1f} km"
-            )
+            st.write(f"Distance: {leg['distance_km']:.1f} km")
 
-            st.write(
-                f"Driving time: {leg['duration_hours']:.1f} hours"
-            )
+            st.write(f"Driving time: {leg['duration_hours']:.1f} hours")
 
-            st.write("Directions:")
+            # create directions and hide them under an expander
+            with st.expander("Show Directions"):
 
-            steps = (
-                leg["route_data"]
-                ["routes"][0]
-                ["legs"][0]
-                ["steps"]
-            )
-
-            for step in steps:
-                maneuver_type = step["maneuver"]["type"]
-
-                road_name = step["name"]
-
-                distance_km = step["distance"] / 1000
-
-                # Ignore tiny instructions.
-                # These are usually lane adjustments, parking-lot
-                # movements, or other noise that isn't useful for
-                # trip planning.
-
-                if distance_km < 0.5:
-                    continue
-
-                instruction = MANEUVER_TEXT.get(
-                    maneuver_type,
-                    maneuver_type.replace("_", " ").title()
+                steps = (
+                    leg["route_data"]
+                    ["routes"][0]
+                    ["legs"][0]
+                    ["steps"]
                 )
 
-                if road_name:
-                    text = (
-                        f"• {instruction} {road_name} "
-                        f"({distance_km:.1f} km)"
-                    )
-                else:
-                    text = (
-                        f"• {instruction} "
-                        f"({distance_km:.1f} km)"
+                for step in steps:
+
+                    maneuver_type = step["maneuver"]["type"]
+
+                    road_name = step["name"]
+
+                    distance_km = step["distance"] / 1000
+
+                    # Ignore tiny instructions
+                    if distance_km < 0.5:
+                        continue
+
+                    instruction = MANEUVER_TEXT.get(
+                        maneuver_type,
+                        maneuver_type.replace("_", " ").title()
                     )
 
-                st.write(text)
+                    if road_name:
+                        text = (
+                            f"• {instruction} {road_name} "
+                            f"({distance_km:.1f} km)"
+                        )
+                    else:
+                        text = (
+                            f"• {instruction} "
+                            f"({distance_km:.1f} km)"
+                        )
+
+                    st.markdown(
+                        f"> {text}"
+                    )
+
             st.divider()
             if leg["leg_number"] == len(st.session_state.trip_legs):
 
-                st.success(
-                    f"Final destination reached: {leg['end_name']}"
-                )
+                st.success(f"Final destination reached: {leg['end_name']}")
 
             else:
 
-                st.info(
-                    f"Break stop: {leg['end_name']}"
-                )
+                st.info(f"Break stop: {leg['end_name']}")
+
     except Exception as error:
 
         if DEBUG_MODE:
             st.exception(error)
         else:
-            st.error(
-                "Sorry, directions could not be displayed."
-            )
+            st.error("Sorry, directions could not be displayed.")

@@ -21,26 +21,22 @@ st.title("Trip Planner")
 origin = st.text_input("Starting location")
 destination = st.text_input("Destination")
 
-# How long the user wants to drive between breaks
+# How long the user wants to drive between breaks, default: 2
 break_interval = st.number_input(
     "Driving time between breaks (hours)",
     min_value=1,
     max_value=8,
-    value=2
-)
+    value=2)
 
-# Maximum cruising speed of the vehicle
-vehicle_speed = st.number_input(
-    "Planned cruising speed (km/h)",
-    min_value=30,
-    max_value=140,
-    value=120
-)
 
-# Create session variables the first time the app loads
+# Create session state to store the various states (because Streamlit will run
+# the entire page again, when I click a button.) I want to be able to "save" the following
+# information, and not have the app "forget" it every time. Without, for example, the show_map
+# session_state, the map flickers once on the screen before vanishing.
 if "show_map" not in st.session_state:
     st.session_state.show_map = False
 
+# these 3 prevent me from having to geocode previous searches
 if "origin_coords" not in st.session_state:
     st.session_state.origin_coords = None
 
@@ -50,21 +46,26 @@ if "destination_coords" not in st.session_state:
 if "route_data" not in st.session_state:
     st.session_state.route_data = None
 
+# this one is probably most important; it stores a list of the trip legs
+# which is also used by the directions page to know what the journey plan is
 if "trip_legs" not in st.session_state:
     st.session_state.trip_legs = []
 
+# more important variables to save
 if "break_interval" not in st.session_state:
     st.session_state.break_interval = 2
-
-if "vehicle_speed" not in st.session_state:
-    st.session_state.vehicle_speed = 120
 
 
 # functions
 
+# this function will find and return coordinates in long and lat
+# the st.cache_data allows me to use previously retrieved data and reduces the
+# need to call geocoders for every search or calculation. In early versions,
+# I hit Nominatum too much and got a 429 error (too many requests).
 @st.cache_data(show_spinner=False)
 def get_coordinates(place):
     # timeout=10 gives the server more time to respond
+    # Nominatum gives coordinates for an address (or vice versa)
     geolocator = Nominatim(user_agent="trip_planner",timeout=10)
     location = geolocator.geocode(place)
     if location:
@@ -72,6 +73,10 @@ def get_coordinates(place):
     return None
 
 
+# this functions is used to find place names for the trip legs (as the
+# overall trip is broken up into chunks, according to the break_interval
+# in a future update, i believe i can use cached data for this, but right now
+# this was the easiest solution
 @st.cache_data(show_spinner=False)
 def get_place_name(coords):
     """
@@ -85,6 +90,7 @@ def get_place_name(coords):
     if not location:
         return "Unknown location"
     address = location.raw.get("address", {})
+    # Nominatum returns an address field with the following:
     return (
         address.get("city")
         or address.get("town")
@@ -124,11 +130,10 @@ if st.button("Show Route"):
 
     st.session_state.origin_coords = get_coordinates(origin)
     st.session_state.break_interval = break_interval
-    st.session_state.vehicle_speed = vehicle_speed
     st.session_state.destination_coords = get_coordinates(destination)
 
     # Clear any previous route data.
-    # We'll recalculate it when the map is displayed.
+    # We'll recalculate it before the new map is displayed.
     st.session_state.route_data = None
     st.session_state.show_map = True
 
@@ -141,6 +146,7 @@ if st.session_state.show_map:
         st.error(f"Could not find '{origin}'")
     elif destination_coords is None:
         st.error(f"Could not find '{destination}'")
+
     # Route display section
     else:
         # Request a road route from OSRM
@@ -152,35 +158,35 @@ if st.session_state.show_map:
         if route_data["code"] != "Ok":
             st.error("Unable to calculate route.")
 
-        # Extract the first route returned by OSRM
+        # Extract the route returned by OSRM (0, because it's the "first" route, but in this case,
+        # also the only route). the variable, route, also makes it easier to read later
         route = route_data["routes"][0]
-
+        # steps are essentially driving instructions; "legs" does not yet refer to "trip_legs"
         steps = route["legs"][0]["steps"]
 
         # Route statistics
+        # convert from meters to kilometers
         distance_km = route["distance"] / 1000
-        duration_hours = (
-                distance_km
-                /
-                st.session_state.vehicle_speed
-        )
+
+        duration_hours = (route["duration"] / 3600)
+
+        # how many trip legs will we have (based on the user inputted break_interval)
+        # math.ceil rounds up to whole number
         estimated_legs = math.ceil(
             duration_hours / st.session_state.break_interval
         )
+        # ":.1f" is used to display numerical values with 1 decimal point, without
+        # modifying the actual number, like round()
         st.write(f"Distance: {distance_km:.1f} km")
         st.write(f"Driving time: {duration_hours:.1f} hours")
-        st.write(
-            f"Break every {st.session_state.break_interval} hour(s)"
-        )
-        st.write(
-            f"Estimated driving legs: {estimated_legs}"
-        )
+        st.write(f"Break every {st.session_state.break_interval} hour(s)")
+        st.write(f"Estimated driving legs: {estimated_legs}")
 
         # Extract the route geometry
         geometry = route["geometry"]
 
         # OSRM returns [longitude, latitude]
-        # Folium expects [latitude, longitude]
+        # Folium expects [latitude, longitude]. Come on, Folium. Get your act together.
 
         road_coordinates = []
 
@@ -188,42 +194,22 @@ if st.session_state.show_map:
             longitude = point[0]
             latitude = point[1]
 
-            road_coordinates.append(
-                [latitude, longitude]
-            )
+            road_coordinates.append([latitude, longitude])
 
-        # Calculate break points
+        # Let's calculate the break markers
         break_markers = []
-
-        # Store information about each leg
-        trip_legs = []
         steps = route["legs"][0]["steps"]
 
-        break_interval_seconds = (
-                st.session_state.break_interval * 3600
-        )
-
+        break_interval_seconds = (st.session_state.break_interval * 3600)
         next_break_time = break_interval_seconds
 
         elapsed_time = 0
 
+        # now we calculate all the steps within the trip_legs
         for step in steps:
-
             step_start_time = elapsed_time
-
-            step_distance_km = (
-                    step["distance"] / 1000
-            )
-
-            step_duration_seconds = (
-                                            step_distance_km
-                                            /
-                                            st.session_state.vehicle_speed
-                                    ) * 3600
-
-            step_end_time = (
-                    elapsed_time + step_duration_seconds
-            )
+            step_duration_seconds = (step["duration"])
+            step_end_time = (elapsed_time + step_duration_seconds)
 
             if DEBUG_MODE:
                 st.write(
@@ -233,54 +219,30 @@ if st.session_state.show_map:
                 )
 
             while step_end_time >= next_break_time:
-                # How far through this step
-                # the breakpoint occurs
-                fraction = (
-                        (next_break_time - step_start_time)
-                        /
-                        step["duration"]
-                )
+                # How far through this step the breakpoint occurs; this is necessary because
+                # the previous calculations were not enough to keep the legs under
+                # the break_duration.
+                fraction = ((next_break_time - step_start_time)/step["duration"])
+                geometry_points = (step["geometry"]["coordinates"])
+                point_index = int(fraction *(len(geometry_points) - 1))
+                point = geometry_points[point_index]
 
-                geometry_points = (
-                    step["geometry"]["coordinates"]
-                )
-
-                point_index = int(
-                    fraction *
-                    (len(geometry_points) - 1)
-                )
-
-                point = geometry_points[
-                    point_index
-                ]
-
-                # Convert from
-                # [longitude, latitude]
-                # to
-                # [latitude, longitude]
-                break_markers.append([
-                    point[1],
-                    point[0]
-                ])
-
-                next_break_time += (
-                    break_interval_seconds
-                )
+                # Convert from [longitude, latitude] to [latitude, longitude]
+                break_markers.append([point[1],point[0]])
+                next_break_time += (break_interval_seconds)
 
             elapsed_time = step_end_time
 
         # Break markers have now been created
-        st.write(f"Break markers: {len(break_markers)}")
+        st.write(f"Breaks: {len(break_markers)}")
 
 
-
-        stopping_points = [
-        origin_coords,
-        *break_markers,
-        destination_coords
-        ]
+        # * is the unpacking operator, that turns break_markers from a list inside a list
+        # individual items within the stopping_points list
+        stopping_points = [origin_coords, *break_markers, destination_coords]
 
         # Create individual legs between stopping points
+        trip_legs = []
         for index in range(len(stopping_points) - 1):
             leg_start = stopping_points[index]
             leg_end = stopping_points[index + 1]
@@ -289,6 +251,8 @@ if st.session_state.show_map:
             route = leg_route["routes"][0]
             start_name = get_place_name(leg_start)
             end_name = get_place_name(leg_end)
+            # populate the trip_legs list with dictionaries containing details about
+            # our trip_legs
             trip_legs.append({
                 "leg_number": index + 1,
                 "start": leg_start,
@@ -297,21 +261,14 @@ if st.session_state.show_map:
                 "end_name": end_name,
                 "break_interval": st.session_state.break_interval,
                 "distance_km": route["distance"] / 1000,
-                "duration_hours":
-(
-    route["distance"] / 1000
-)
-/
-st.session_state.vehicle_speed,
-
-                "route_data": leg_route
-            })
+                "duration_hours": (route["duration"] / 3600),
+                "route_data" : leg_route
+                    })
 
         # Save legs for use on other pages
         st.session_state.trip_legs = trip_legs
 
-
-        # Create map
+        # now we create the main map (on the trip planner page)
         m = folium.Map()
 
         # Start marker
@@ -336,15 +293,12 @@ st.session_state.vehicle_speed,
             )
         ).add_to(m)
 
-        # Add break markers, and place-name them
-        for index, break_point in enumerate(
-                break_markers,
-                start=1
-        ):
+        # Add break markers. (Future version may have tooltip = cached location.)
+        for index, break_point in enumerate(break_markers,start=1):
             folium.Marker(
                 location=break_point,
                 icon=folium.Icon(color="orange")
-            ).add_to(m)
+                ).add_to(m)
 
         # Draw route line
         folium.PolyLine(
@@ -354,18 +308,11 @@ st.session_state.vehicle_speed,
             opacity=0.8
         ).add_to(m)
 
-        # Zoom so both markers are visible
-        m.fit_bounds([
-            origin_coords,
-            destination_coords
-        ])
+        # Zoom so both markers are visible (occasionally clip off top of map)
+        m.fit_bounds([origin_coords,destination_coords])
 
         # Display map
-        st_folium(
-            m,
-            width=700,
-            height=500
-        )
+        st_folium(m,width=700,height=500)
 
 
 
