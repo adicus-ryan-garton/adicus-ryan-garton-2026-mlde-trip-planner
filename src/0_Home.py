@@ -12,14 +12,12 @@ DEBUG_MODE = False
 
 import streamlit as st
 
-st.image("assets/hero.jpg")
+st.image("../assets/hero.jpg")
 
-st.title("Band Van Tour Planner v1.0")
+st.title("Band Tour Planner v1.0")
 
 st.write("""
-Welcome to the Band Van Tour Planner v1.0.
+Plan routes, schedule breaks, and organize long-distance journeys.
 
-Use the sidebar to:
-- Plan a route
-- View detailed directions & maps
+Use the Trip Planner to build your route and Directions to view detailed driving instructions.
 """)
