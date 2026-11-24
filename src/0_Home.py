@@ -12,7 +12,7 @@ DEBUG_MODE = False
 
 import streamlit as st
 
-st.image("assets/hero.jpg", use_container_width=True)
+st.image("assets/hero.jpg")
 
 st.title("Band Van Tour Planner v1.0")
 
