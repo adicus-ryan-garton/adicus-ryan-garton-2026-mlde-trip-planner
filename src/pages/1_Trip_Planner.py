@@ -314,6 +314,11 @@ if st.session_state.show_map:
         # Display map
         st_folium(m,width=700,height=500)
 
+st.divider()
+
+st.caption(
+    "Created by Adicus Garton"
+)
 
 
 

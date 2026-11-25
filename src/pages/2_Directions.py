@@ -151,3 +151,9 @@ else:
             st.exception(error)
         else:
             st.error("Sorry, directions could not be displayed.")
+
+st.divider()
+
+st.caption(
+    "Created by Adicus Garton"
+)

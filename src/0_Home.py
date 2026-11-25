@@ -21,3 +21,9 @@ Plan routes, schedule breaks, and organize long-distance journeys.
 
 Use the Trip Planner to build your route and Directions to view detailed driving instructions.
 """)
+
+st.divider()
+
+st.caption(
+    "Created by Adicus Garton"
+)
