@@ -17,6 +17,11 @@ import math
 # Page title
 st.title("Trip Planner")
 
+st.caption("""Here you can see your whole tour/trip planned out.
+
+Once you input the route, you can head over to Directions to see the
+trip broken up into separate legs and get step-by-step directions.""")
+
 # Ask the user for a starting point and destination
 origin = st.text_input("Starting location")
 destination = st.text_input("Destination")
@@ -316,9 +321,7 @@ if st.session_state.show_map:
 
 st.divider()
 
-st.caption(
-    "Created by Adicus Garton"
-)
+st.caption("Trip Planner 1.0 · Created by Adicus Garton")
 
 
 

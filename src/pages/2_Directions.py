@@ -31,7 +31,7 @@ st.title("Directions")
 
 # Check whether a route has been calculated
 if "trip_legs" not in st.session_state or not st.session_state.trip_legs:
-    st.warning("Create a route in Trip Planner first.")
+    st.warning("One does not simply walk into Mordor. You'll need to create a route in Trip Planner first.")
 
 else:
     st.write(f"{len(st.session_state.trip_legs)} driving legs found.")
@@ -154,6 +154,4 @@ else:
 
 st.divider()
 
-st.caption(
-    "Created by Adicus Garton"
-)
+st.caption("Trip Planner 1.0 · Created by Adicus Garton")
