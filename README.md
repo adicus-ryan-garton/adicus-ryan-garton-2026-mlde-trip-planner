@@ -4,7 +4,7 @@ Band Tour Planner is designed to assist touring musicians and crews with long-di
 
 Version 1.0 focuses on routing, maps, directions, and break planning.
 
-Created by Adicus Garton (with a little bitta lotta help by MS Copilot)
+Created by Adicus Garton (with a little bitta lotta bitta help by MS Copilot)
 
 ---
 
